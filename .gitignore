@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.env
+llama-b5560-bin-win-cpu-x64/
+
+# Large/binary files
+*.mp3
+*.zip
+*.bin
+*.exe
+*.tar.gz
+*.log
+
+# Secrets
+API KEYS.md
+output.mp3
