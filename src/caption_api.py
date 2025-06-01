@@ -1,54 +1,52 @@
-# caption_api.py
-import base64
 import cv2
+import base64
+import requests
+import time
 from fastapi import FastAPI
 from pydantic import BaseModel
-import requests
-
 app = FastAPI()
 
-# Constants
-API_URL = "http://localhost:8080/v1/chat/completions"
-INSTRUCTION = "What do you see?"
-
 class CaptionRequest(BaseModel):
-    trigger: str  # expected to be "describe_camera"
-
-def capture_frame():
-    cap = cv2.VideoCapture(0)
-    ret, frame = cap.read()
-    cap.release()
-    if not ret:
-        raise RuntimeError("Webcam capture failed.")
-    _, buffer = cv2.imencode('.jpg', frame)
-    return base64.b64encode(buffer.tobytes()).decode("utf-8")
+    trigger: str
 
 @app.post("/caption")
 def describe_camera(req: CaptionRequest):
     if req.trigger != "describe_camera":
         return {"status": "ignored"}
-    return {"status": "ok", "message": "Camera trigger received!"}
 
+    # 1. Capture webcam frame
+    cap = cv2.VideoCapture(0)
+    ret, frame = cap.read()
+    cap.release()
+    if not ret:
+        return {"status": "error", "message": "Webcam capture failed"}
 
-    image_base64 = capture_frame()
+    _, buffer = cv2.imencode('.jpg', frame)
+    base64_image = base64.b64encode(buffer).decode("utf-8")
+
+    # 2. Prepare payload for SmolVLM
     payload = {
         "max_tokens": 100,
         "messages": [
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": INSTRUCTION},
+                    {"type": "text", "text": "What do you see?"},
                     {"type": "image_url", "image_url": {
-                        "url": f"data:image/jpeg;base64,{image_base64}"
+                        "url": f"data:image/jpeg;base64,{base64_image}"
                     }}
                 ]
             }
         ]
     }
 
-    response = requests.post(API_URL, json=payload)
-    if response.ok:
-        caption = response.json()["choices"][0]["message"]["content"]
-        return {"caption": caption}
-    else:
-        return {"error": response.text}
+    # 3. Send request to local SmolVLM API
+    try:
+        response = requests.post("http://localhost:8080/v1/chat/completions", json=payload)
+        if response.ok:
+            caption = response.json()["choices"][0]["message"]["content"]
+            return {"status": "ok", "caption": caption}
+        else:
+            return {"status": "error", "message": f"SmolVLM failed: {response.text}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
