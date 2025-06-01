@@ -27,6 +27,8 @@ def capture_frame():
 def describe_camera(req: CaptionRequest):
     if req.trigger != "describe_camera":
         return {"status": "ignored"}
+    return {"status": "ok", "message": "Camera trigger received!"}
+
 
     image_base64 = capture_frame()
     payload = {
