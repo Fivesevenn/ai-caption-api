@@ -1,0 +1,8 @@
+#build
+docker build --no-cache -t ai-assistant .
+docker run --rm -it --gpus all -v L:/Lazyguywithambition/ai_assistant_project:/app ai-assistant
+
+# delete oartial builds and images:
+docker image rm ai-assistant
+docker system prune -af
+
